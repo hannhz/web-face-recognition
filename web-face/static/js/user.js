@@ -73,6 +73,113 @@
   const btnModalVerifLanjut = document.getElementById('btn-modal-verif-lanjut');
   const detailPasienContent = document.getElementById('detail-pasien-content');
 
+  // KTP Elements
+  const btnScanKtp = document.getElementById('btn-scan-ktp');
+  const modalKtpCam = document.getElementById('modal-ktp-cam');
+  const videoKtp = document.getElementById('video-ktp');
+  const btnKtpSnap = document.getElementById('btn-ktp-snap');
+  const btnKtpClose = document.getElementById('btn-ktp-close');
+
+  const modalKtpReview = document.getElementById('modal-ktp-review');
+  const revNik = document.getElementById('rev-nik');
+  const revNama = document.getElementById('rev-nama');
+  const revDob = document.getElementById('rev-dob');
+  const revAlamat = document.getElementById('rev-alamat');
+  const btnRevConfirm = document.getElementById('btn-rev-confirm');
+  const btnRevCancel = document.getElementById('btn-rev-cancel');
+
+  const ktpOverlay = document.getElementById('ktp-scan-overlay');
+  const ktpCountdown = document.getElementById('ktp-scan-countdown');
+  const ktpCircle = document.getElementById('ktp-scan-circle');
+  const ktpGuideBox = document.getElementById('ktp-guide-box');
+
+  let ktpCheckInterval = null;
+  let ktpDetectedTime = 0;
+  const KTP_REQUIRED_TIME = 2500; // 2.5 Detik tahan
+  const KTP_CIRCLE_FULL = 176;
+
+  // --- KTP LOGIC ---
+  async function openKtpCamera() {
+    // KONFIGURASI KAMERA DISINI:
+    // 0 = Kamera Utama Laptop (Default)
+    // 1 = Kamera Kedua (Webcam Eksternal)
+    const CAMERA_INDEX_KTP = 1;
+
+    try {
+      // Kita gunakan initWebcam agar bisa pilih device index
+      streamKtp = await initWebcam(videoKtp, CAMERA_INDEX_KTP);
+
+      if (streamKtp) {
+        modalKtpCam.classList.remove('hidden');
+
+        // MULAI DETEKSI OTOMATIS
+        startKtpAutoCheck();
+      }
+    } catch (e) {
+      showAlert('Gagal akses kamera KTP: ' + e.message);
+    }
+  }
+
+  function closeKtpCamera() {
+    // STOP DETEKSI OTOMATIS
+    stopKtpAutoCheck();
+
+    if (streamKtp) {
+      streamKtp.getTracks().forEach((t) => t.stop());
+      streamKtp = null;
+    }
+    modalKtpCam.classList.add('hidden');
+  }
+
+  async function processKtpImage() {
+    if (!streamKtp) return;
+
+    // 1. Capture Frame
+    const canvas = document.createElement('canvas');
+    canvas.width = videoKtp.videoWidth;
+    canvas.height = videoKtp.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(videoKtp, 0, 0);
+
+    // Stop camera biar hemat resource & UI UX enak
+    closeKtpCamera();
+    showLoading('Sedang membaca KTP (OCR)...');
+
+    // 2. Convert to Blob & Send
+    canvas.toBlob(
+      async (blob) => {
+        const fd = new FormData();
+        fd.append('image', blob, 'ktp.jpg');
+
+        try {
+          const r = await fetch('/api/ocr/ktp', { method: 'POST', body: fd });
+          const d = await r.json();
+          hideLoading();
+
+          if (!d.ok) {
+            showAlert(d.msg || 'Gagal baca KTP.');
+            return;
+          }
+
+          // 3. Show Review Modal
+          revNik.value = d.data.nik || '';
+          revNama.value = d.data.nama || '';
+          revDob.value = d.data.dob || '';
+          revAlamat.value = d.data.alamat || '';
+
+          modalKtpReview.classList.remove('hidden');
+        } catch (err) {
+          hideLoading();
+          showAlert('Error OCR: ' + err.message);
+        }
+      },
+      'image/jpeg',
+      0.9
+    );
+  }
+
+  let streamKtp = null;
+
   // --- STATE ---
   let activePatient = null;
   let streamReg = null;
@@ -586,6 +693,99 @@
       showAlert('Error jaringan: ' + err.message);
     }
   });
+
+  // --- Event Listener KTP ---
+  btnScanKtp.addEventListener('click', openKtpCamera);
+  btnKtpClose.addEventListener('click', closeKtpCamera);
+  btnKtpSnap.addEventListener('click', processKtpImage);
+
+  btnRevCancel.addEventListener('click', () => {
+    modalKtpReview.classList.add('hidden');
+  });
+
+  btnRevConfirm.addEventListener('click', () => {
+    // Pindahkan data dari Review Modal ke Form Utama
+    inputNik.value = revNik.value;
+    inputNama.value = revNama.value;
+    inputDob.value = revDob.value;
+    inputAlamat.value = revAlamat.value;
+
+    modalKtpReview.classList.add('hidden');
+    // Opsional: Langsung fokus ke tombol mulai registrasi
+    // document.getElementById('btn-mulai-regis').focus();
+  });
+
+  // --- KTP AUTO SCAN LOGIC ---
+  function startKtpAutoCheck() {
+    if (ktpCheckInterval) clearInterval(ktpCheckInterval);
+    ktpDetectedTime = 0;
+    resetKtpUI();
+
+    ktpCheckInterval = setInterval(async () => {
+      if (modalKtpCam.classList.contains('hidden')) return;
+      if (!streamKtp) return;
+
+      // 1. Ambil frame kecil untuk deteksi cepat
+      const blob = await captureSingleFrame(videoKtp, 0.4);
+      if (!blob) return;
+
+      const fd = new FormData();
+      fd.append('frame', blob);
+
+      try {
+        const r = await fetch('/api/check_ktp_presence', { method: 'POST', body: fd });
+        const d = await r.json();
+
+        if (d.ok && d.found) {
+          // KTP TERDETEKSI (Warna Biru + Kotak)
+          ktpDetectedTime += 400; // Interval kita ~400ms
+
+          updateKtpUI(ktpDetectedTime, KTP_REQUIRED_TIME);
+
+          if (ktpDetectedTime >= KTP_REQUIRED_TIME) {
+            // SUKSES: TRIGGER FOTO
+            stopKtpAutoCheck();
+            processKtpImage(); // Panggil fungsi foto yang sudah ada
+          }
+        } else {
+          // KTP HILANG / GOYANG
+          ktpDetectedTime = 0;
+          resetKtpUI();
+        }
+      } catch (e) {
+        console.log('KTP Check Error', e);
+      }
+    }, 400); // Cek setiap 400ms
+  }
+
+  function stopKtpAutoCheck() {
+    if (ktpCheckInterval) {
+      clearInterval(ktpCheckInterval);
+      ktpCheckInterval = null;
+    }
+    resetKtpUI();
+  }
+
+  function updateKtpUI(current, total) {
+    ktpOverlay.classList.remove('hidden');
+    ktpGuideBox.classList.remove('border-gray-400');
+    ktpGuideBox.classList.add('border-green-500'); // Kotak jadi hijau
+
+    const remaining = Math.ceil((total - current) / 1000);
+    ktpCountdown.textContent = remaining > 0 ? remaining : 'OK';
+
+    const percentage = Math.min(current / total, 1);
+    const offset = KTP_CIRCLE_FULL - percentage * KTP_CIRCLE_FULL;
+    ktpCircle.style.strokeDashoffset = offset;
+  }
+
+  function resetKtpUI() {
+    ktpOverlay.classList.add('hidden');
+    ktpGuideBox.classList.add('border-gray-400');
+    ktpGuideBox.classList.remove('border-green-500');
+    ktpCountdown.textContent = '3';
+    ktpCircle.style.strokeDashoffset = KTP_CIRCLE_FULL;
+  }
 
   // Nav hooks
   navHome.addEventListener('click', () => showPage('page-home'));

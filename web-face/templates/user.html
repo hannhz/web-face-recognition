@@ -7,13 +7,11 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
-        darkMode: 'class', // Mengaktifkan toggle manual
+        darkMode: 'class',
         theme: {
           extend: {
             colors: {
-              // Warna Primary
               primary: { 100: '#ccfbf1', 500: '#14b8a6', 600: '#0d9488', 700: '#0f766e', 900: '#134e4a' },
-              // Warna Dark Mode (Sama dengan Admin)
               bgdark: '#0d0f10',
               card: '#181b1f',
               border: '#2a2f34',
@@ -32,13 +30,11 @@
         display: none;
       }
 
-      /* Nav Active State */
       .nav-button.active {
         border-bottom-color: #0d9488;
         color: #0d9488;
         font-weight: 700;
       }
-      /* Dark mode nav active overrides */
       html.dark .nav-button.active {
         color: #14b8a6;
         border-bottom-color: #14b8a6;
@@ -107,7 +103,6 @@
         background: #e5e7eb;
         overflow: hidden;
       }
-      /* Dark mode progress bar bg */
       html.dark .progress-bar {
         background: #2a2f34;
       }
@@ -169,6 +164,7 @@
           <div class="w-full md:w-1/2 bg-white dark:bg-card p-6 rounded-xl shadow-lg border dark:border-border transition-colors">
             <form id="form-registrasi" class="space-y-5">
               <h2 class="text-xl font-semibold text-gray-700 dark:text-primary-500 mb-4 border-b dark:border-border pb-2">Data Diri</h2>
+
               <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-400">NIK</label>
                 <input
@@ -190,18 +186,16 @@
                   class="mt-1 w-full border rounded-md px-3 py-2 bg-gray-50 dark:bg-bgdark dark:border-border dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
                   required
                 />
-                <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">Gunakan nama resmi di KTP.</p>
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-400">Tanggal Lahir</label>
                 <input
                   id="reg-ttl"
                   type="date"
-                  min="2000-01-01"
+                  min="1900-01-01"
                   class="mt-1 w-full border rounded-md px-3 py-2 bg-gray-50 dark:bg-bgdark dark:border-border dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 [color-scheme:light] dark:[color-scheme:dark]"
                   required
                 />
-                <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">Tanggal lahir (≥ tahun 2000 untuk UX cepat).</p>
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-400">Alamat</label>
@@ -212,12 +206,26 @@
                   class="mt-1 w-full border rounded-md px-3 py-2 bg-gray-50 dark:bg-bgdark dark:border-border dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
                   required
                 ></textarea>
-                <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">Tuliskan lengkap sesuai identitas.</p>
               </div>
+
+              <div class="flex justify-center py-2">
+                <button type="button" id="btn-scan-ktp" class="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors shadow-md w-full justify-center">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                    ></path>
+                  </svg>
+                  Scan E-KTP (Otomatis)
+                </button>
+              </div>
+
               <div class="pt-4 border-t dark:border-border">
-                <button id="btn-mulai-regis" type="submit" class="w-full py-3 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 shadow-lg">Mulai Registrasi</button>
+                <button id="btn-mulai-regis" type="submit" class="w-full py-3 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 shadow-lg">Mulai Registrasi Wajah</button>
               </div>
-              <p class="text-xs text-gray-500 dark:text-gray-500">Foto wajah akan diambil secara otomatis untuk pendaftaran.</p>
+              <p class="text-xs text-gray-500 dark:text-gray-500 text-center">Data KTP akan digunakan, lalu wajah Anda akan direkam.</p>
             </form>
           </div>
 
@@ -238,17 +246,14 @@
 
       <section id="page-poli" class="hidden animate-fade-in">
         <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-6">Verifikasi Pasien</h1>
-
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
           <div class="space-y-6 order-2 lg:order-1">
             <div class="bg-white dark:bg-card p-6 rounded-xl shadow-lg border border-gray-200 dark:border-border transition-colors">
               <h2 class="text-xl font-bold text-gray-800 dark:text-primary-500 mb-4 border-b dark:border-border pb-2">Panel Kontrol</h2>
-
               <div class="mb-6">
                 <p class="text-gray-500 dark:text-gray-400 text-sm mb-1">Status Sistem:</p>
                 <p id="status-verif" class="text-lg font-bold text-primary-600 dark:text-primary-400 animate-pulse">Menunggu wajah...</p>
               </div>
-
               <div class="flex flex-col gap-3">
                 <button id="btn-scan" class="w-full py-3 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition shadow-md flex items-center justify-center gap-2">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -269,26 +274,21 @@
                 </button>
               </div>
             </div>
-
             <div id="verif-result" class="hidden bg-white dark:bg-card p-6 rounded-xl shadow-lg border-l-4 border-green-500 border dark:border-border">
               <div class="flex justify-between items-start mb-4">
                 <h3 class="text-xl font-bold text-gray-800 dark:text-gray-100">Data Pasien Ditemukan</h3>
                 <span class="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs font-semibold px-2.5 py-0.5 rounded">Verified</span>
               </div>
-
               <div id="verif-data" class="space-y-3 text-gray-700 dark:text-gray-300 text-sm mb-4"></div>
-
               <div class="bg-blue-50 dark:bg-[#1e293b] text-blue-800 dark:text-blue-300 text-sm px-4 py-2 rounded-lg mb-4 flex items-center gap-2 animate-pulse border dark:border-border">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                 <span id="next-scan-text" class="font-medium">Verifikasi selanjutnya dalam 10 detik...</span>
               </div>
-
               <div class="flex gap-3">
                 <button id="btn-detail-data" class="flex-1 py-2 px-4 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition">Jeda Verifikasi</button>
                 <button id="btn-lanjut-form" class="flex-1 py-2 px-4 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition">Lanjut Poli →</button>
               </div>
             </div>
-
             <div id="verif-nik" class="hidden bg-white dark:bg-card p-6 rounded-xl shadow-lg border border-gray-200 dark:border-border">
               <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">Cari Database</h3>
               <div class="flex gap-2">
@@ -303,20 +303,15 @@
               </div>
             </div>
           </div>
-
           <div class="bg-gray-800 dark:bg-[#101214] rounded-xl shadow-2xl p-4 order-1 lg:order-2 lg:sticky lg:top-24 border dark:border-border">
             <h2 class="text-white text-lg font-semibold mb-3 flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span> Verifikasi Wajah</h2>
-
             <div class="video-wrapper relative overflow-hidden rounded-lg bg-black aspect-[4/3] w-full">
               <video id="video-verif" autoplay playsinline class="w-full h-full object-cover"></video>
-
               <div id="verif-focus-box" class="focus-box transition-colors duration-300 border-red-600 shadow-[0_0_20px_rgba(0,0,0,0.5)]"></div>
               <div class="focus-text bg-black bg-opacity-50 backdrop-blur-sm">Arahkan wajah ke sini</div>
-
               <div id="auto-scan-overlay" class="absolute inset-0 bg-black bg-opacity-70 flex flex-col items-center justify-center hidden z-20 backdrop-blur-sm">
                 <div class="text-white text-6xl font-black mb-2 drop-shadow-2xl scale-110" id="auto-scan-countdown">3</div>
                 <div class="text-primary-200 text-sm font-medium tracking-wider uppercase mb-6">Scanning...</div>
-
                 <svg class="w-24 h-24 -rotate-90 transform">
                   <circle cx="48" cy="48" r="42" stroke="currentColor" stroke-width="8" fill="none" class="text-gray-700 opacity-50" />
                   <circle
@@ -374,8 +369,8 @@
                   </select>
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-400">Keluhan</label>
-                  <textarea
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-400">Keluhan</label
+                  ><textarea
                     id="gw-keluhan"
                     rows="3"
                     class="mt-1 w-full border dark:border-border rounded-md px-3 py-2 bg-white dark:bg-bgdark text-gray-900 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -383,8 +378,8 @@
                   ></textarea>
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-400">Sejak Kapan</label>
-                  <input
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-400">Sejak Kapan</label
+                  ><input
                     id="gw-sejak"
                     type="text"
                     placeholder="Misal: 3 hari"
@@ -394,8 +389,8 @@
                 </div>
                 <div class="flex flex-col sm:flex-row gap-4">
                   <div class="w-full sm:w-1/2">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-400">Tinggi (cm)</label>
-                    <input
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-400">Tinggi (cm)</label
+                    ><input
                       id="gw-tb"
                       type="number"
                       class="mt-1 w-full border dark:border-border rounded-md px-3 py-2 bg-white dark:bg-bgdark text-gray-900 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -403,8 +398,8 @@
                     />
                   </div>
                   <div class="w-full sm:w-1/2">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-400">Berat (kg)</label>
-                    <input
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-400">Berat (kg)</label
+                    ><input
                       id="gw-bb"
                       type="number"
                       class="mt-1 w-full border dark:border-border rounded-md px-3 py-2 bg-white dark:bg-bgdark text-gray-900 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -419,6 +414,53 @@
         </div>
       </section>
     </main>
+
+    <div id="modal-ktp-cam" class="modal-center fixed inset-0 bg-black bg-opacity-90 hidden p-4 z-50">
+      <div class="bg-white dark:bg-card rounded-xl shadow-2xl w-full max-w-lg p-4 flex flex-col relative">
+        <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-2 text-center">Scan E-KTP Otomatis</h3>
+        <div class="relative bg-black rounded-lg overflow-hidden aspect-[16/10] w-full">
+          <video id="video-ktp" autoplay playsinline class="w-full h-full object-cover"></video>
+
+          <div id="ktp-guide-box" class="absolute inset-0 border-4 border-gray-400 opacity-50 m-8 rounded-lg pointer-events-none transition-colors duration-300"></div>
+
+          <div id="ktp-scan-overlay" class="absolute inset-0 flex flex-col items-center justify-center hidden z-20 bg-black bg-opacity-40 backdrop-blur-[2px]">
+            <div class="text-white text-5xl font-bold mb-2 drop-shadow-md" id="ktp-scan-countdown">3</div>
+            <div class="text-white text-sm font-medium bg-blue-600 bg-opacity-90 px-3 py-1 rounded-full shadow-lg">Tahan posisi KTP...</div>
+            <svg class="w-16 h-16 mt-4 rotate-[-90deg]">
+              <circle cx="32" cy="32" r="28" stroke="currentColor" stroke-width="4" fill="none" class="text-gray-600 opacity-50" />
+              <circle id="ktp-scan-circle" cx="32" cy="32" r="28" stroke="currentColor" stroke-width="4" fill="none" class="text-blue-400" stroke-dasharray="176" stroke-dashoffset="176" style="transition: stroke-dashoffset 0.1s linear" />
+            </svg>
+          </div>
+
+          <div class="absolute bottom-2 left-0 right-0 text-center text-white text-xs bg-black bg-opacity-60 py-1 mx-8 rounded">Pastikan KTP pas di kotak & tulisan jelas</div>
+        </div>
+
+        <div class="flex gap-3 mt-4">
+          <button id="btn-ktp-snap" class="flex-1 py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition shadow-lg">Ambil Manual</button>
+          <button id="btn-ktp-close" class="px-4 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition">Batal</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="modal-ktp-review" class="modal-center fixed inset-0 bg-black bg-opacity-70 hidden p-4 z-50">
+      <div class="bg-white dark:bg-card border border-gray-200 dark:border-border rounded-xl w-full max-w-md p-6 shadow-2xl">
+        <h3 class="text-xl font-bold text-primary-600 dark:text-primary-500 mb-4 border-b dark:border-border pb-2">Konfirmasi Data KTP</h3>
+        <div class="space-y-3">
+          <div><label class="text-xs text-gray-500 dark:text-gray-400">NIK (Hasil Scan)</label><input id="rev-nik" type="text" class="w-full border rounded px-2 py-1 dark:bg-bgdark dark:border-border dark:text-white" /></div>
+          <div><label class="text-xs text-gray-500 dark:text-gray-400">Nama</label><input id="rev-nama" type="text" class="w-full border rounded px-2 py-1 dark:bg-bgdark dark:border-border dark:text-white" /></div>
+          <div>
+            <label class="text-xs text-gray-500 dark:text-gray-400">Tanggal Lahir</label
+            ><input id="rev-dob" type="date" class="w-full border rounded px-2 py-1 dark:bg-bgdark dark:border-border dark:text-white [color-scheme:light] dark:[color-scheme:dark]" />
+          </div>
+          <div><label class="text-xs text-gray-500 dark:text-gray-400">Alamat</label><textarea id="rev-alamat" rows="2" class="w-full border rounded px-2 py-1 dark:bg-bgdark dark:border-border dark:text-white"></textarea></div>
+        </div>
+        <p class="text-xs text-yellow-600 mt-2 bg-yellow-50 dark:bg-yellow-900 dark:bg-opacity-20 p-2 rounded">⚠️ Silakan koreksi jika ada data yang salah baca.</p>
+        <div class="flex gap-3 mt-4">
+          <button id="btn-rev-confirm" class="flex-1 py-2 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700">Gunakan Data Ini</button>
+          <button id="btn-rev-cancel" class="px-4 py-2 bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white rounded-lg hover:bg-gray-400">Batal</button>
+        </div>
+      </div>
+    </div>
 
     <div id="modal-regis-success" class="modal-center fixed inset-0 bg-gray-800 bg-opacity-70 hidden p-4 z-50">
       <div class="bg-white dark:bg-card rounded-xl shadow-2xl w-full max-w-md p-6 text-center border dark:border-border">
@@ -486,7 +528,6 @@
       const darkIcon = document.getElementById('theme-toggle-dark-icon');
       const lightIcon = document.getElementById('theme-toggle-light-icon');
 
-      // Cek preferensi awal
       if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
         document.documentElement.classList.add('dark');
         lightIcon.classList.remove('hidden');
@@ -496,11 +537,8 @@
       }
 
       themeToggleBtn.addEventListener('click', function () {
-        // Toggle icons
         darkIcon.classList.toggle('hidden');
         lightIcon.classList.toggle('hidden');
-
-        // Toggle local storage & class
         if (localStorage.getItem('color-theme')) {
           if (localStorage.getItem('color-theme') === 'light') {
             document.documentElement.classList.add('dark');
