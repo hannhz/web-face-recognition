@@ -1,4 +1,4 @@
-// User front-end: Auto Scan + Auto Reset flow.
+// User front-end: FINAL FIX (Waktu Verif + Countdown Reset + IP Fix Ready)
 (() => {
   // --- DOM Elements ---
   const pageHome = document.getElementById('page-home');
@@ -35,12 +35,16 @@
   const btnLanjutForm = document.getElementById('btn-lanjut-form');
   const btnDetailData = document.getElementById('btn-detail-data');
 
+  // Switch Camera Buttons
+  const btnSwitchCamReg = document.getElementById('btn-switch-cam-reg');
+  const btnSwitchCamVerif = document.getElementById('btn-switch-cam-verif');
+
   // Auto Scan Overlay Elements
   const overlayAuto = document.getElementById('auto-scan-overlay');
   const textCountdown = document.getElementById('auto-scan-countdown');
   const circleProgress = document.getElementById('auto-scan-circle');
   const focusBox = document.getElementById('verif-focus-box');
-  const nextScanText = document.getElementById('next-scan-text'); // Text timer 10s
+  // Note: nextScanText element is created dynamically inside verifData now
 
   // Poli gateway
   const formPoliGateway = document.getElementById('form-poli-gateway');
@@ -48,6 +52,7 @@
   const gwUmur = document.getElementById('gw-umur');
   const gwAlamat = document.getElementById('gw-alamat');
   const gwPoli = document.getElementById('gw-poli');
+  const gwKeluhan = document.getElementById('gw-keluhan');
 
   // Modals
   const modalAlert = document.getElementById('modal-alert');
@@ -67,140 +72,39 @@
   const btnModalRegisTutup = document.getElementById('btn-modal-regis-tutup');
   const btnModalLanjutPoli = document.getElementById('btn-modal-lanjut-poli');
 
-  const modalVerifDetail = document.getElementById('modal-verif-detail');
-  const btnModalVerifTutup = document.getElementById('btn-modal-verif-tutup');
-  const btnModalVerifCloseX = document.getElementById('btn-modal-verif-close-x');
-  const btnModalVerifLanjut = document.getElementById('btn-modal-verif-lanjut');
-  const detailPasienContent = document.getElementById('detail-pasien-content');
+  // Camera Permission Modal
+  const modalCameraPermission = document.getElementById('modal-camera-permission');
+  const btnCameraPermission = document.getElementById('btn-camera-permission');
+  const btnCameraPermissionLater = document.getElementById('btn-camera-permission-later');
 
-  // KTP Elements
-  const btnScanKtp = document.getElementById('btn-scan-ktp');
-  const modalKtpCam = document.getElementById('modal-ktp-cam');
-  const videoKtp = document.getElementById('video-ktp');
-  const btnKtpSnap = document.getElementById('btn-ktp-snap');
-  const btnKtpClose = document.getElementById('btn-ktp-close');
+  // Camera Status Indicator
+  const cameraStatus = document.getElementById('camera-status');
+  const cameraStatusDot = document.getElementById('camera-status-dot');
+  const cameraStatusText = document.getElementById('camera-status-text');
 
-  const modalKtpReview = document.getElementById('modal-ktp-review');
-  const revNik = document.getElementById('rev-nik');
-  const revNama = document.getElementById('rev-nama');
-  const revDob = document.getElementById('rev-dob');
-  const revAlamat = document.getElementById('rev-alamat');
-  const btnRevConfirm = document.getElementById('btn-rev-confirm');
-  const btnRevCancel = document.getElementById('btn-rev-cancel');
-
-  const ktpOverlay = document.getElementById('ktp-scan-overlay');
-  const ktpCountdown = document.getElementById('ktp-scan-countdown');
-  const ktpCircle = document.getElementById('ktp-scan-circle');
-  const ktpGuideBox = document.getElementById('ktp-guide-box');
-
-  let ktpCheckInterval = null;
-  let ktpDetectedTime = 0;
-  const KTP_REQUIRED_TIME = 2500; // 2.5 Detik tahan
-  const KTP_CIRCLE_FULL = 176;
-
-  // --- KTP LOGIC ---
-  async function openKtpCamera() {
-    // KONFIGURASI KAMERA DISINI:
-    // 0 = Kamera Utama Laptop (Default)
-    // 1 = Kamera Kedua (Webcam Eksternal)
-    const CAMERA_INDEX_KTP = 1;
-
-    try {
-      // Kita gunakan initWebcam agar bisa pilih device index
-      streamKtp = await initWebcam(videoKtp, CAMERA_INDEX_KTP);
-
-      if (streamKtp) {
-        modalKtpCam.classList.remove('hidden');
-
-        // MULAI DETEKSI OTOMATIS
-        startKtpAutoCheck();
-      }
-    } catch (e) {
-      showAlert('Gagal akses kamera KTP: ' + e.message);
-    }
-  }
-
-  function closeKtpCamera() {
-    // STOP DETEKSI OTOMATIS
-    stopKtpAutoCheck();
-
-    if (streamKtp) {
-      streamKtp.getTracks().forEach((t) => t.stop());
-      streamKtp = null;
-    }
-    modalKtpCam.classList.add('hidden');
-  }
-
-  async function processKtpImage() {
-    if (!streamKtp) return;
-
-    // 1. Capture Frame
-    const canvas = document.createElement('canvas');
-    canvas.width = videoKtp.videoWidth;
-    canvas.height = videoKtp.videoHeight;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(videoKtp, 0, 0);
-
-    // Stop camera biar hemat resource & UI UX enak
-    closeKtpCamera();
-    showLoading('Sedang membaca KTP (OCR)...');
-
-    // 2. Convert to Blob & Send
-    canvas.toBlob(
-      async (blob) => {
-        const fd = new FormData();
-        fd.append('image', blob, 'ktp.jpg');
-
-        try {
-          const r = await fetch('/api/ocr/ktp', { method: 'POST', body: fd });
-          const d = await r.json();
-          hideLoading();
-
-          if (!d.ok) {
-            showAlert(d.msg || 'Gagal baca KTP.');
-            return;
-          }
-
-          // 3. Show Review Modal
-          revNik.value = d.data.nik || '';
-          revNama.value = d.data.nama || '';
-          revDob.value = d.data.dob || '';
-          revAlamat.value = d.data.alamat || '';
-
-          modalKtpReview.classList.remove('hidden');
-        } catch (err) {
-          hideLoading();
-          showAlert('Error OCR: ' + err.message);
-        }
-      },
-      'image/jpeg',
-      0.9
-    );
-  }
-
-  let streamKtp = null;
-
-  // --- STATE ---
-  let activePatient = null;
+  // -- STATE VARIABLES --
   let streamReg = null;
   let streamVerif = null;
+  let currentFacingMode = 'user';
+  let activeStreamMode = null;
+  let activePatient = null;
+  let verificationStartTime = null; // Variable untuk hitung durasi
 
   // Auto Scan State
   let autoCheckInterval = null;
-  let nextScanTimer = null; // Timer untuk 10 detik reset
-  let isScanning = false; // True jika sedang proses capture/verifikasi
-  let faceDetectedTime = 0; // Waktu (ms) wajah terdeteksi terus menerus
-  const CHECK_INTERVAL = 400; // Cek wajah setiap 400ms
-  const REQUIRED_TIME = 3000; // Butuh 3 detik (3000ms) untuk trigger
-  const CIRCLE_FULL = 226; // Dasharray SVG (sesuai r=36 di HTML baru)
+  let nextScanTimer = null;
+  let isScanning = false;
+  let faceDetectedTime = 0;
+  const CHECK_INTERVAL = 400;
+  const REQUIRED_TIME = 2000;
+  const CIRCLE_FULL = 264;
 
   // --- NAVIGATION ---
   function showPage(id) {
-    // Stop semua timer jika pindah halaman
     stopAutoCheck();
     stopNextScanCountdown();
 
-    [pageHome, pageRegistrasi, pagePoli, pagePoliGateway].forEach((p) => p.classList.add('hidden'));
+    [pageHome, pageRegistrasi, pagePoli, pagePoliGateway].forEach((p) => p && p.classList.add('hidden'));
     document.querySelectorAll('.nav-button').forEach((b) => b.classList.remove('active'));
 
     if (id === 'page-home') {
@@ -208,54 +112,121 @@
     }
     if (id === 'page-registrasi') {
       pageRegistrasi.classList.remove('hidden');
-      navRegistrasi.classList.add('active');
-      ensureCamera('reg');
+      if (navRegistrasi) navRegistrasi.classList.add('active');
     }
     if (id === 'page-poli') {
       pagePoli.classList.remove('hidden');
-      navPoli.classList.add('active');
-      ensureCamera('verif').then(() => {
-        // Mulai Auto Check setelah kamera siap
-        startAutoCheck();
-      });
+      if (navPoli) navPoli.classList.add('active');
       resetVerif();
     }
     if (id === 'page-poli-gateway') {
       pagePoliGateway.classList.remove('hidden');
-      navPoli.classList.add('active');
+      if (navPoli) navPoli.classList.add('active');
     }
   }
 
   function resetVerif() {
-    verifResult.classList.add('hidden');
-    verifNikBox.classList.add('hidden');
-    statusVerif.textContent = 'Menunggu wajah...';
-    verifData.innerHTML = '';
+    if (verifResult) verifResult.classList.add('hidden');
+    if (verifNikBox) verifNikBox.classList.add('hidden');
+    if (statusVerif) statusVerif.textContent = 'Menunggu wajah...';
+    if (verifData) verifData.innerHTML = '';
     isScanning = false;
-    stopNextScanCountdown(); // Pastikan timer 10s mati
+    stopNextScanCountdown();
     resetCountdownUI();
-    // Restart auto check
-    startAutoCheck();
+
+    ensureCamera('verif').then(() => {
+      if (streamVerif && !pagePoli.classList.contains('hidden')) {
+        startAutoCheck();
+      }
+    });
   }
 
-  // --- AUTO SCAN LOGIC (Capture & Countdown 3s) ---
+  // --- CAMERA LOGIC ---
+  async function initWebcam(videoEl, mode = 'user') {
+    if (videoEl.srcObject) {
+      videoEl.srcObject.getTracks().forEach((t) => t.stop());
+    }
+
+    const constraints = {
+      video: {
+        facingMode: mode,
+        width: { ideal: 640 },
+        height: { ideal: 480 },
+      },
+      audio: false,
+    };
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      videoEl.srcObject = stream;
+      if (mode === 'environment') {
+        videoEl.classList.add('video-back-cam');
+      } else {
+        videoEl.classList.remove('video-back-cam');
+      }
+      return stream;
+    } catch (e) {
+      if (mode === 'environment') {
+        return initWebcam(videoEl, 'user');
+      }
+      showAlert('Gagal akses kamera: ' + e.message);
+      return null;
+    }
+  }
+
+  async function ensureCamera(type) {
+    const status = localStorage.getItem('cameraPermissionStatus');
+    if (status !== 'granted') {
+      showCameraPermissionModal();
+      return;
+    }
+    if (type === 'verif' && streamVerif && streamVerif.active && activeStreamMode === currentFacingMode) return;
+    if (type === 'reg' && streamReg && streamReg.active && activeStreamMode === currentFacingMode) return;
+
+    if (type === 'reg') streamReg = await initWebcam(videoReg, currentFacingMode);
+    if (type === 'verif') streamVerif = await initWebcam(videoVerif, currentFacingMode);
+
+    activeStreamMode = currentFacingMode;
+    updateCameraStatus('granted');
+  }
+
+  async function switchCamera() {
+    currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+    activeStreamMode = null;
+    if (!pageRegistrasi.classList.contains('hidden')) await ensureCamera('reg');
+    else if (!pagePoli.classList.contains('hidden')) {
+      stopAutoCheck();
+      await ensureCamera('verif');
+      startAutoCheck();
+    }
+  }
+
+  if (btnSwitchCamReg)
+    btnSwitchCamReg.addEventListener('click', (e) => {
+      e.preventDefault();
+      switchCamera();
+    });
+  if (btnSwitchCamVerif)
+    btnSwitchCamVerif.addEventListener('click', (e) => {
+      e.preventDefault();
+      switchCamera();
+    });
+
+  // --- AUTO SCAN LOGIC ---
   function startAutoCheck() {
     if (autoCheckInterval) clearInterval(autoCheckInterval);
     faceDetectedTime = 0;
 
     autoCheckInterval = setInterval(async () => {
-      // Syarat: Halaman Poli aktif, Stream ada, Tidak sedang scanning, Modal loading tidak muncul, Hasil tidak muncul
       if (pagePoli.classList.contains('hidden')) return;
       if (!streamVerif || videoVerif.paused || videoVerif.ended) return;
       if (isScanning) return;
       if (!modalLoading.classList.contains('hidden')) return;
       if (!verifResult.classList.contains('hidden')) return;
 
-      // 1. Ambil 1 frame kecil (fast)
-      const frameBlob = await captureSingleFrame(videoVerif, 0.5);
+      const frameBlob = await captureSingleFrame(videoVerif, 240, 0.5);
       if (!frameBlob) return;
 
-      // 2. Kirim ke API Check Face
       const fd = new FormData();
       fd.append('frame', frameBlob, 'check.jpg');
 
@@ -264,23 +235,16 @@
         const d = await r.json();
 
         if (d.ok && d.found) {
-          // Wajah DITEMUKAN
           faceDetectedTime += CHECK_INTERVAL;
           statusVerif.textContent = `Wajah terdeteksi... ${Math.ceil((REQUIRED_TIME - faceDetectedTime) / 1000)}s`;
           updateCountdownUI(faceDetectedTime, REQUIRED_TIME);
-
-          if (faceDetectedTime >= REQUIRED_TIME) {
-            triggerAutoScan();
-          }
+          if (faceDetectedTime >= REQUIRED_TIME) triggerAutoScan();
         } else {
-          // Wajah HILANG
           faceDetectedTime = 0;
           statusVerif.textContent = 'Menunggu wajah...';
           resetCountdownUI();
         }
-      } catch (err) {
-        // Silent fail
-      }
+      } catch (err) {}
     }, CHECK_INTERVAL);
   }
 
@@ -293,53 +257,54 @@
   }
 
   function updateCountdownUI(current, total) {
-    overlayAuto.classList.remove('hidden');
-    focusBox.classList.remove('border-red-600');
-    focusBox.classList.add('border-primary-500'); // Hijau
-
-    // Hitung detik mundur (3, 2, 1)
+    if (overlayAuto) overlayAuto.classList.remove('hidden');
+    if (focusBox) {
+      focusBox.classList.remove('border-red-600');
+      focusBox.classList.add('border-primary-500');
+    }
     const remaining = Math.ceil((total - current) / 1000);
-    textCountdown.textContent = remaining > 0 ? remaining : 'Scan';
-
-    // Update lingkaran progress
-    const percentage = Math.min(current / total, 1);
-    const offset = CIRCLE_FULL - percentage * CIRCLE_FULL;
-    circleProgress.style.strokeDashoffset = offset;
+    if (textCountdown) textCountdown.textContent = remaining > 0 ? remaining : 'Scan';
+    if (circleProgress) {
+      const percentage = Math.min(current / total, 1);
+      const offset = CIRCLE_FULL - percentage * CIRCLE_FULL;
+      circleProgress.style.strokeDashoffset = offset;
+    }
   }
 
   function resetCountdownUI() {
-    overlayAuto.classList.add('hidden');
-    focusBox.classList.add('border-red-600');
-    focusBox.classList.remove('border-primary-500');
-    textCountdown.textContent = '3';
-    circleProgress.style.strokeDashoffset = CIRCLE_FULL;
+    if (overlayAuto) overlayAuto.classList.add('hidden');
+    if (focusBox) {
+      focusBox.classList.remove('border-red-600');
+      focusBox.classList.remove('border-primary-500');
+    }
+    if (textCountdown) textCountdown.textContent = '3';
+    if (circleProgress) circleProgress.style.strokeDashoffset = CIRCLE_FULL;
   }
 
-  function triggerAutoScan() {
+  async function triggerAutoScan() {
     isScanning = true;
     stopAutoCheck();
     btnScan.click();
   }
 
-  // --- NEXT SCAN COUNTDOWN (10s Logic) ---
+  // --- NEXT SCAN COUNTDOWN (RESTORED) ---
   function startNextScanCountdown() {
     stopNextScanCountdown();
     let seconds = 10;
 
+    // Helper untuk update text di UI yang baru di-generate
     const updateText = () => {
-      if (nextScanText) {
-        nextScanText.textContent = `Verifikasi selanjutnya dalam ${seconds} detik...`;
-      }
+      const el = document.getElementById('next-scan-text-dynamic');
+      if (el) el.textContent = `Verifikasi selanjutnya dalam ${seconds} detik...`;
     };
-    updateText();
 
+    updateText();
     nextScanTimer = setInterval(() => {
       seconds--;
       updateText();
-
       if (seconds <= 0) {
         stopNextScanCountdown();
-        resetVerif(); // RESET TOTAL -> Loop ulang
+        resetVerif();
       }
     }, 1000);
   }
@@ -351,11 +316,13 @@
     }
   }
 
-  function captureSingleFrame(videoEl, quality = 0.5) {
+  // --- IMAGE CAPTURE ---
+  function captureSingleFrame(videoEl, width = 320, quality = 0.5) {
     return new Promise((resolve) => {
+      if (!videoEl.videoWidth) return resolve(null);
       const canvas = document.createElement('canvas');
-      const scale = 200 / videoEl.videoWidth;
-      canvas.width = 200;
+      const scale = width / videoEl.videoWidth;
+      canvas.width = width;
       canvas.height = videoEl.videoHeight * scale;
       const ctx = canvas.getContext('2d');
       ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
@@ -363,94 +330,20 @@
     });
   }
 
-  // --- COMMON HELPERS ---
-  function showAlert(msg) {
-    alertMessage.textContent = msg;
-    modalAlert.classList.remove('hidden');
-  }
-  function hideAlert() {
-    modalAlert.classList.add('hidden');
-  }
-  function showLoading(text) {
-    loadingText.textContent = text;
-    progressInner.style.width = '0%';
-    modalLoading.classList.remove('hidden');
-  }
-  function hideLoading() {
-    modalLoading.classList.add('hidden');
-  }
-  function updateProgress(c, t, label) {
-    const pct = Math.round((c / t) * 100);
-    progressInner.style.width = pct + '%';
-    loadingText.textContent = `${label} ${c}/${t} (${pct}%)`;
-  }
-  function openAntrian(poli, nomor) {
-    antrianPoli.textContent = `Poli: ${poli}`;
-    antrianNomor.textContent = nomor;
-    modalAntrian.classList.remove('hidden');
-  }
-  function closeAntrian() {
-    modalAntrian.classList.add('hidden');
-  }
-  function computeAge(dob) {
-    try {
-      const d = new Date(dob);
-      if (isNaN(d.getTime())) return '–';
-      const today = new Date();
-      let age = today.getFullYear() - d.getFullYear();
-      const m = today.getMonth() - d.getMonth();
-      if (m < 0 || (m === 0 && today.getDate() < d.getDate())) age--;
-      return `${age} Tahun`;
-    } catch (_) {
-      return '–';
-    }
-  }
-
-  // --- WEBCAM ---
-  async function initWebcam(videoEl, cameraIndex = 0) {
-    try {
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const videoDevices = devices.filter((device) => device.kind === 'videoinput');
-      const targetDevice = videoDevices[cameraIndex] || videoDevices[0];
-      if (!targetDevice) {
-        showAlert('Tidak ada kamera terdeteksi.');
-        return null;
-      }
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { deviceId: { exact: targetDevice.deviceId } },
-        audio: false,
-      });
-      videoEl.srcObject = stream;
-      return stream;
-    } catch (e) {
-      showAlert('Gagal akses webcam: ' + e.message);
-      return null;
-    }
-  }
-
-  async function ensureCamera(mode) {
-    const CAMERA_INDEX_REG = 1;
-    const CAMERA_INDEX_VERIF = 1;
-
-    if (mode === 'reg' && !streamReg) {
-      streamReg = await initWebcam(videoReg, CAMERA_INDEX_REG);
-    }
-    if (mode === 'verif' && !streamVerif) {
-      streamVerif = await initWebcam(videoVerif, CAMERA_INDEX_VERIF);
-    }
-  }
-
-  function captureFrames(videoEl, total = 20, gap = 120, counterEl = null, label = 'Frame', quality = 0.85) {
+  function captureFrames(videoEl, total = 3, gap = 150, counterEl = null, label = 'Frame', quality = 0.7) {
     return new Promise((resolve) => {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       const frames = [];
       let taken = 0;
+      const targetWidth = 400;
+      const scale = targetWidth / videoEl.videoWidth;
+      canvas.width = targetWidth;
+      canvas.height = videoEl.videoHeight * scale;
+
       const grab = () => {
         if (!videoEl.videoWidth) return requestAnimationFrame(grab);
-        canvas.width = videoEl.videoWidth;
-        canvas.height = videoEl.videoHeight;
-        ctx.drawImage(videoEl, 0, 0);
+        ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
         canvas.toBlob(
           (b) => {
             frames.push(b);
@@ -468,24 +361,59 @@
     });
   }
 
+  // --- HELPER UI ---
+  function showAlert(msg) {
+    if (alertMessage) alertMessage.textContent = msg;
+    if (modalAlert) modalAlert.classList.remove('hidden');
+  }
+  function showLoading(text) {
+    if (loadingText) loadingText.textContent = text;
+    if (progressInner) progressInner.style.width = '0%';
+    if (modalLoading) modalLoading.classList.remove('hidden');
+  }
+  function hideLoading() {
+    if (modalLoading) modalLoading.classList.add('hidden');
+  }
+  function updateProgress(c, t, label) {
+    const pct = Math.round((c / t) * 100);
+    if (progressInner) progressInner.style.width = pct + '%';
+    if (loadingText) loadingText.textContent = `${label} ${c}/${t} (${pct}%)`;
+  }
+  function computeAge(dob) {
+    if (!dob) return '-';
+    const d = new Date(dob);
+    const today = new Date();
+    let age = today.getFullYear() - d.getFullYear();
+    const m = today.getMonth() - d.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < d.getDate())) age--;
+    return `${age} Tahun`;
+  }
+
   // --- EVENT LISTENERS ---
 
-  // 1. Registrasi
+  // Registrasi
   formRegistrasi.addEventListener('submit', async (e) => {
     e.preventDefault();
     const nikVal = inputNik.value.trim();
-    if (!/^\d{16}$/.test(nikVal)) {
-      showAlert('NIK harus 16 digit angka.');
+
+    const status = localStorage.getItem('cameraPermissionStatus');
+    if (status !== 'granted') {
+      showCameraPermissionModal();
       return;
     }
+
     await ensureCamera('reg');
-    if (!streamReg) return;
+    if (!streamReg) {
+      statusReg.textContent = 'Gagal kamera';
+      return;
+    }
+
     statusReg.textContent = 'Mengambil foto...';
     countReg.textContent = '0';
     showLoading('Registrasi: mengambil foto...');
-    const frames = await captureFrames(videoReg, 20, 120, countReg, 'Foto', 0.85);
-    updateProgress(20, 20, 'Mengirim');
-    statusReg.textContent = 'Mengirim...';
+
+    const frames = await captureFrames(videoReg, 15, 100, countReg, 'Foto', 0.8);
+    updateProgress(15, 15, 'Mengirim');
 
     const fd = new FormData();
     fd.append('nik', nikVal);
@@ -493,59 +421,58 @@
     fd.append('dob', inputDob.value);
     fd.append('address', inputAlamat.value.trim());
     frames.forEach((b, i) => fd.append('frames[]', b, `frame_${i}.jpg`));
+
     try {
       const r = await fetch('/api/register', { method: 'POST', body: fd });
       const d = await r.json();
       hideLoading();
       if (!d.ok) {
-        showAlert(d.msg || 'Registrasi gagal');
+        showAlert(d.msg || 'Gagal');
         statusReg.textContent = 'Gagal';
         return;
       }
-      statusReg.textContent = 'Berhasil';
       activePatient = { nik: nikVal, name: inputNama.value.trim(), address: inputAlamat.value.trim(), dob: inputDob.value };
       formRegistrasi.reset();
       countReg.textContent = '0';
-      modalRegisSuccess.classList.remove('hidden');
+      if (modalRegisSuccess) modalRegisSuccess.classList.remove('hidden');
     } catch (err) {
       hideLoading();
-      showAlert('Error jaringan: ' + err.message);
-      statusReg.textContent = 'Error';
+      showAlert('Error: ' + err.message);
     }
   });
 
-  btnModalRegisTutup.addEventListener('click', () => {
-    modalRegisSuccess.classList.add('hidden');
-    showPage('page-home');
-  });
-  btnModalLanjutPoli.addEventListener('click', () => {
-    modalRegisSuccess.classList.add('hidden');
-    if (activePatient) {
-      gwNama.textContent = activePatient.name;
-      gwUmur.textContent = computeAge(activePatient.dob);
-      gwAlamat.textContent = activePatient.address;
-      showPage('page-poli-gateway');
-    } else showAlert('Data pasien tidak tersedia.');
-  });
+  if (btnModalRegisTutup)
+    btnModalRegisTutup.addEventListener('click', () => {
+      if (modalRegisSuccess) modalRegisSuccess.classList.add('hidden');
+      showPage('page-home');
+    });
 
-  // 2. Verifikasi (Logic Tombol Scan)
+  // --- VERIFIKASI (RESTORED DETAILS) ---
   btnScan.addEventListener('click', async () => {
     isScanning = true;
     resetCountdownUI();
-    stopNextScanCountdown(); // Pastikan tidak ada timer reset berjalan
+    stopNextScanCountdown();
+
+    const status = localStorage.getItem('cameraPermissionStatus');
+    if (status !== 'granted') {
+      showCameraPermissionModal();
+      isScanning = false;
+      return;
+    }
 
     await ensureCamera('verif');
     if (!streamVerif) {
       isScanning = false;
-      startAutoCheck();
       return;
     }
 
+    // HITUNG DURASI
+    verificationStartTime = Date.now();
     statusVerif.textContent = 'Memverifikasi...';
     showLoading('Verifikasi: mengambil foto...');
 
-    const frames = await captureFrames(videoVerif, 20, 100, null, 'Verifikasi', 0.8);
-    updateProgress(20, 20, 'Memproses');
+    const frames = await captureFrames(videoVerif, 3, 100, null, 'Verifikasi', 0.7);
+    updateProgress(3, 3, 'Memproses');
 
     const fd = new FormData();
     frames.forEach((b, i) => fd.append('frames[]', b, `scan_${i}.jpg`));
@@ -555,252 +482,168 @@
       const d = await r.json();
       hideLoading();
 
-      if (!d.ok) {
-        showAlert(d.msg || 'Verifikasi gagal');
-        statusVerif.textContent = 'Gagal';
-        isScanning = false;
-        startAutoCheck();
-        return;
-      }
-
-      if (!d.found) {
-        statusVerif.textContent = 'Tidak dikenali';
+      if (!d.ok || !d.found) {
+        statusVerif.textContent = 'Gagal/Tidak Dikenali';
         showAlert(d.msg || 'Wajah tidak dikenali.');
         activePatient = null;
-        verifResult.classList.add('hidden');
         isScanning = false;
-        startAutoCheck();
+        setTimeout(startAutoCheck, 2000);
         return;
       }
 
-      // SUKSES
+      // HITUNG DURASI SELESAI
+      const elapsed = ((Date.now() - verificationStartTime) / 1000).toFixed(1);
+
       statusVerif.textContent = 'Berhasil';
-      activePatient = { nik: d.nik, name: d.name, address: d.address, dob: d.dob, age: d.age, confidence: d.confidence };
+      activePatient = { nik: d.nik, name: d.name, address: d.address, dob: d.dob, age: d.age };
+
+      // RESTORED UI: Lengkap dengan Waktu Verifikasi & Timer Reset
       verifData.innerHTML = `
-        <p><strong>NIK:</strong> <span class="font-mono">${d.nik}</span></p>
-        <p><strong>Nama:</strong> ${d.name}</p>
-        <p><strong>Tanggal Lahir:</strong> ${d.dob || '-'}</p>
-        <p><strong>Umur:</strong> ${d.age}</p>
-        <p><strong>Alamat:</strong> ${d.address}</p>
-        <p><strong>Tingkat Kecocokan:</strong> ${d.confidence}%</p>
+        <div class="space-y-2">
+            <p><span class="font-semibold w-24 inline-block text-gray-500 dark:text-gray-400">NIK:</span> <span class="font-mono font-bold">${d.nik}</span></p>
+            <p><span class="font-semibold w-24 inline-block text-gray-500 dark:text-gray-400">Nama:</span> <span class="font-bold text-lg">${d.name}</span></p>
+            <p><span class="font-semibold w-24 inline-block text-gray-500 dark:text-gray-400">Tgl Lahir:</span> <span>${d.dob || '-'}</span></p>
+            <p><span class="font-semibold w-24 inline-block text-gray-500 dark:text-gray-400">Umur:</span> <span>${d.age}</span></p>
+            <p><span class="font-semibold w-24 inline-block text-gray-500 dark:text-gray-400">Alamat:</span> <span>${d.address}</span></p>
+            <p><span class="font-semibold w-24 inline-block text-gray-500 dark:text-gray-400">Waktu:</span> <span class="font-mono">${elapsed} detik</span></p>
+            
+            <div class="mt-3 pt-2 border-t dark:border-gray-700 flex justify-between items-center">
+                <span class="text-xs font-medium ${d.confidence > 70 ? 'text-green-600 dark:text-green-400' : 'text-yellow-600'}">
+                   Kecocokan: ${d.confidence}%
+                </span>
+            </div>
+            
+            <div class="bg-blue-50 dark:bg-[#1e293b] text-blue-800 dark:text-blue-300 text-sm px-4 py-2 rounded-lg mt-2 flex items-center gap-2 animate-pulse border dark:border-border">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <span id="next-scan-text-dynamic" class="font-medium">Verifikasi selanjutnya dalam 10 detik...</span>
+            </div>
+        </div>
       `;
       verifResult.classList.remove('hidden');
-
-      // --- MULAI COUNTDOWN 10 DETIK UNTUK RESET OTOMATIS ---
-      startNextScanCountdown();
-    } catch (err) {
-      hideLoading();
-      showAlert('Error jaringan: ' + err.message);
-      statusVerif.textContent = 'Error';
-      isScanning = false;
-      startAutoCheck();
-    }
-  });
-
-  // Tombol Detail Data -> Lanjut (Stop Timer)
-  btnDetailData.addEventListener('click', () => {
-    stopNextScanCountdown(); // Stop timer agar user bisa baca data
-  });
-
-  btnModalVerifLanjut.addEventListener('click', () => {
-    modalVerifDetail.classList.add('hidden');
-    stopNextScanCountdown(); // Stop timer karena user sudah pilih lanjut
-    if (!activePatient) {
-      showAlert('Data pasien tidak tersedia.');
-      return;
-    }
-    gwNama.textContent = activePatient.name;
-    gwUmur.textContent = activePatient.age || computeAge(activePatient.dob) || '–';
-    gwAlamat.textContent = activePatient.address;
-    showPage('page-poli-gateway');
-  });
-
-  // Manual NIK
-  btnNikFallback.addEventListener('click', () => {
-    stopAutoCheck();
-    stopNextScanCountdown();
-    verifNikBox.classList.remove('hidden');
-    verifResult.classList.add('hidden');
-  });
-
-  btnCariNik.addEventListener('click', async () => {
-    const nik = fallbackNik.value.trim();
-    if (!/^\d{16}$/.test(nik)) {
-      showAlert('Masukkan NIK 16 digit.');
-      return;
-    }
-    showLoading('Cari pasien...');
-    try {
-      const r = await fetch(`/api/patient/${nik}`);
-      const d = await r.json();
-      hideLoading();
-      if (!d.ok) {
-        showAlert(d.msg || 'NIK tidak ditemukan.');
-        return;
-      }
-      activePatient = { nik: d.patient.nik, name: d.patient.name, address: d.patient.address, dob: d.patient.dob, age: d.patient.age };
-      verifData.innerHTML = `
-        <p><strong>NIK:</strong> <span class="font-mono">${activePatient.nik}</span></p>
-        <p><strong>Nama:</strong> ${activePatient.name}</p>
-        <p><strong>Umur:</strong> ${activePatient.age || computeAge(activePatient.dob) || '–'}</p>
-        <p><strong>Alamat:</strong> ${activePatient.address}</p>
-      `;
-      verifResult.classList.remove('hidden');
-      showAlert('Data pasien ditemukan.');
-      // Tidak pakai timer otomatis di manual, karena user mungkin butuh waktu
+      startNextScanCountdown(); // Timer jalan lagi
     } catch (err) {
       hideLoading();
       showAlert('Error: ' + err.message);
+      isScanning = false;
     }
   });
 
-  // Form Poli -> Lanjut (Stop Timer)
-  btnLanjutForm.addEventListener('click', () => {
-    stopNextScanCountdown();
-    if (!activePatient) return;
-    gwNama.textContent = activePatient.name;
-    gwUmur.textContent = activePatient.age || computeAge(activePatient.dob) || '–';
-    gwAlamat.textContent = activePatient.address;
-    showPage('page-poli-gateway');
-  });
+  // Navigation Event Listeners
+  if (navHome) navHome.addEventListener('click', () => showPage('page-home'));
+  if (navRegistrasi) navRegistrasi.addEventListener('click', () => showPage('page-registrasi'));
+  if (navPoli) navPoli.addEventListener('click', () => showPage('page-poli'));
+  if (btnHomeRegistrasi) btnHomeRegistrasi.addEventListener('click', () => showPage('page-registrasi'));
+  if (btnHomeKePoli) btnHomeKePoli.addEventListener('click', () => showPage('page-poli'));
 
-  // Form Poli Submit
-  formPoliGateway.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    if (!activePatient) {
-      showAlert('Data pasien tidak tersedia.');
-      return;
-    }
-    const poli = gwPoli.value;
-    if (!poli) {
-      showAlert('Pilih poli.');
-      return;
-    }
-    showLoading('Mengambil nomor antrian...');
-    try {
-      const r = await fetch('/api/queue/assign', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ poli }) });
-      const d = await r.json();
-      hideLoading();
-      if (!d.ok) {
-        showAlert(d.msg || 'Gagal ambil nomor.');
-        return;
+  // Modal Closers
+  if (btnAlertOk) btnAlertOk.addEventListener('click', () => modalAlert.classList.add('hidden'));
+  if (btnAntrianTutup)
+    btnAntrianTutup.addEventListener('click', () => {
+      modalAntrian.classList.add('hidden');
+      showPage('page-home');
+    });
+
+  if (btnDetailData) btnDetailData.addEventListener('click', stopNextScanCountdown);
+  if (btnLanjutForm)
+    btnLanjutForm.addEventListener('click', () => {
+      stopNextScanCountdown();
+      if (activePatient) {
+        gwNama.textContent = activePatient.name;
+        gwUmur.textContent = activePatient.age || computeAge(activePatient.dob);
+        gwAlamat.textContent = activePatient.address;
+        showPage('page-poli-gateway');
       }
-      openAntrian(d.poli, d.nomor);
-      e.target.reset();
-      activePatient = null;
-    } catch (err) {
-      hideLoading();
-      showAlert('Error jaringan: ' + err.message);
-    }
-  });
+    });
+  if (btnModalLanjutPoli)
+    btnModalLanjutPoli.addEventListener('click', () => {
+      if (modalRegisSuccess) modalRegisSuccess.classList.add('hidden');
+      if (activePatient) {
+        gwNama.textContent = activePatient.name;
+        gwUmur.textContent = computeAge(activePatient.dob);
+        gwAlamat.textContent = activePatient.address;
+        showPage('page-poli-gateway');
+      }
+    });
 
-  // --- Event Listener KTP ---
-  btnScanKtp.addEventListener('click', openKtpCamera);
-  btnKtpClose.addEventListener('click', closeKtpCamera);
-  btnKtpSnap.addEventListener('click', processKtpImage);
-
-  btnRevCancel.addEventListener('click', () => {
-    modalKtpReview.classList.add('hidden');
-  });
-
-  btnRevConfirm.addEventListener('click', () => {
-    // Pindahkan data dari Review Modal ke Form Utama
-    inputNik.value = revNik.value;
-    inputNama.value = revNama.value;
-    inputDob.value = revDob.value;
-    inputAlamat.value = revAlamat.value;
-
-    modalKtpReview.classList.add('hidden');
-    // Opsional: Langsung fokus ke tombol mulai registrasi
-    // document.getElementById('btn-mulai-regis').focus();
-  });
-
-  // --- KTP AUTO SCAN LOGIC ---
-  function startKtpAutoCheck() {
-    if (ktpCheckInterval) clearInterval(ktpCheckInterval);
-    ktpDetectedTime = 0;
-    resetKtpUI();
-
-    ktpCheckInterval = setInterval(async () => {
-      if (modalKtpCam.classList.contains('hidden')) return;
-      if (!streamKtp) return;
-
-      // 1. Ambil frame kecil untuk deteksi cepat
-      const blob = await captureSingleFrame(videoKtp, 0.4);
-      if (!blob) return;
-
-      const fd = new FormData();
-      fd.append('frame', blob);
-
+  // Poli Submit
+  if (formPoliGateway)
+    formPoliGateway.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!activePatient) return;
+      showLoading('Mengambil antrian...');
       try {
-        const r = await fetch('/api/check_ktp_presence', { method: 'POST', body: fd });
+        const r = await fetch('/api/queue/assign', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ poli: gwPoli.value }),
+        });
         const d = await r.json();
-
-        if (d.ok && d.found) {
-          // KTP TERDETEKSI (Warna Biru + Kotak)
-          ktpDetectedTime += 400; // Interval kita ~400ms
-
-          updateKtpUI(ktpDetectedTime, KTP_REQUIRED_TIME);
-
-          if (ktpDetectedTime >= KTP_REQUIRED_TIME) {
-            // SUKSES: TRIGGER FOTO
-            stopKtpAutoCheck();
-            processKtpImage(); // Panggil fungsi foto yang sudah ada
-          }
+        hideLoading();
+        if (d.ok) {
+          antrianPoli.textContent = d.poli;
+          antrianNomor.textContent = d.nomor;
+          modalAntrian.classList.remove('hidden');
+          formPoliGateway.reset();
+          activePatient = null;
         } else {
-          // KTP HILANG / GOYANG
-          ktpDetectedTime = 0;
-          resetKtpUI();
+          showAlert('Gagal ambil nomor');
         }
-      } catch (e) {
-        console.log('KTP Check Error', e);
+      } catch (err) {
+        hideLoading();
+        showAlert('Error: ' + err.message);
       }
-    }, 400); // Cek setiap 400ms
+    });
+
+  // --- PERMISSION LOGIC ---
+  function showCameraPermissionModal() {
+    if (modalCameraPermission) modalCameraPermission.classList.remove('hidden');
   }
 
-  function stopKtpAutoCheck() {
-    if (ktpCheckInterval) {
-      clearInterval(ktpCheckInterval);
-      ktpCheckInterval = null;
+  function hideCameraPermissionModal() {
+    if (modalCameraPermission) modalCameraPermission.classList.add('hidden');
+  }
+
+  function updateCameraStatus(s) {
+    if (!cameraStatus || !cameraStatusDot || !cameraStatusText) return;
+    if (s === 'granted') {
+      cameraStatusDot.className = 'w-2 h-2 rounded-full bg-green-500';
+      cameraStatusText.textContent = 'Camera: Siap';
+      cameraStatus.className = 'flex items-center gap-2 mb-8 px-3 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 w-fit mx-auto';
+    } else {
+      cameraStatusDot.className = 'w-2 h-2 rounded-full bg-red-500';
+      cameraStatusText.textContent = 'Camera: Belum Izin';
+      cameraStatus.className = 'flex items-center gap-2 mb-8 px-3 py-1 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 w-fit mx-auto';
     }
-    resetKtpUI();
   }
 
-  function updateKtpUI(current, total) {
-    ktpOverlay.classList.remove('hidden');
-    ktpGuideBox.classList.remove('border-gray-400');
-    ktpGuideBox.classList.add('border-green-500'); // Kotak jadi hijau
+  if (btnCameraPermission)
+    btnCameraPermission.addEventListener('click', async () => {
+      try {
+        const s = await navigator.mediaDevices.getUserMedia({ video: true });
+        s.getTracks().forEach((t) => t.stop());
+        localStorage.setItem('cameraPermissionStatus', 'granted');
+        hideCameraPermissionModal();
+        showAlert('Kamera diizinkan! Silakan lanjutkan.');
+        updateCameraStatus('granted');
+      } catch (e) {
+        localStorage.setItem('cameraPermissionStatus', 'denied');
+        hideCameraPermissionModal();
+        showAlert('Akses ditolak. Fitur scan wajah tidak bisa digunakan.');
+        updateCameraStatus('denied');
+      }
+    });
 
-    const remaining = Math.ceil((total - current) / 1000);
-    ktpCountdown.textContent = remaining > 0 ? remaining : 'OK';
+  if (btnCameraPermissionLater)
+    btnCameraPermissionLater.addEventListener('click', () => {
+      hideCameraPermissionModal();
+    });
 
-    const percentage = Math.min(current / total, 1);
-    const offset = KTP_CIRCLE_FULL - percentage * KTP_CIRCLE_FULL;
-    ktpCircle.style.strokeDashoffset = offset;
+  if (localStorage.getItem('cameraPermissionStatus') === 'granted') {
+    updateCameraStatus('granted');
+  } else {
+    updateCameraStatus('denied');
+    setTimeout(showCameraPermissionModal, 1500);
   }
 
-  function resetKtpUI() {
-    ktpOverlay.classList.add('hidden');
-    ktpGuideBox.classList.add('border-gray-400');
-    ktpGuideBox.classList.remove('border-green-500');
-    ktpCountdown.textContent = '3';
-    ktpCircle.style.strokeDashoffset = KTP_CIRCLE_FULL;
-  }
-
-  // Nav hooks
-  navHome.addEventListener('click', () => showPage('page-home'));
-  navRegistrasi.addEventListener('click', () => showPage('page-registrasi'));
-  navPoli.addEventListener('click', () => showPage('page-poli'));
-  btnHomeRegistrasi.addEventListener('click', () => showPage('page-registrasi'));
-  btnHomeKePoli.addEventListener('click', () => showPage('page-poli'));
-
-  btnAlertOk.addEventListener('click', hideLoading);
-  btnAlertOk.addEventListener('click', () => modalAlert.classList.add('hidden'));
-  btnAntrianTutup.addEventListener('click', () => {
-    closeAntrian();
-    showPage('page-home');
-  });
-
-  // Init
   showPage('page-home');
 })();

@@ -141,10 +141,42 @@ Jika sukses, log terminal akan menampilkan: INFO:FaceEngine:InsightFace app init
 
 ## 🔗 Akses Aplikasi
 
+### Akses Lokal
+
 - **User**: http://127.0.0.1:5000/
 - **Admin**: http://127.0.0.1:5000/admin/login
   - Username: `admin`
   - Password: `Cakra@123`
+
+### Akses Online dengan Cloudflared (Mengganti ngrok)
+
+Untuk akses dari internet, gunakan **Cloudflared Quick Tunnel** (gratis dan lebih stabil dari ngrok):
+
+#### Cara 1: Otomatis dengan Script
+
+```bash
+# Windows Batch (CMD)
+start-with-cloudflared.bat
+
+# PowerShell
+.\start-with-cloudflared.ps1
+```
+
+#### Cara 2: Manual
+
+```bash
+# Terminal 1: Jalankan Flask
+python app.py
+
+# Terminal 2: Jalankan Cloudflared tunnel
+..\cloudflared.exe tunnel --url http://127.0.0.1:5000
+```
+
+**Catatan**:
+
+- `cloudflared.exe` sudah tersedia di folder parent
+- Cloudflared akan memberikan URL publik seperti: `https://abc123.trycloudflare.com`
+- URL ini bisa diakses dari mana saja untuk testing atau demo
 
 ## 📊 Arsitektur Pipeline
 

@@ -1,5 +1,7 @@
-# Exclude data folder
+# Exclude data folder (Wajah & KTP)
 data/
+data/database_wajah/
+data/database_ktp/
 
 # Model files (generated at runtime)
 model/buffalo_l/
@@ -11,15 +13,12 @@ model/last_dataset.sig
 model/*.npy
 model/*.zip
 
-# Python
+# Python cache & logs
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 .Python
-env/
-venv/
-.venv/
 pip-log.txt
 pip-delete-this-directory.txt
 .tox/
@@ -37,29 +36,33 @@ coverage.xml
 
 # Virtual environments
 .env
-.venv
+.venv/
 env/
 venv/
 ENV/
 env.bak/
 venv.bak/
 
-# IDE
+# IDE settings
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# OS
+# OS files
 .DS_Store
 Thumbs.db
 
-# Temporary files
+# Temporary files & Debugging Images (PENTING)
 temp_scan.jpg
+debug_*.jpg
+test_ktp.py
+test_engine.py
 
 # Database
 database.db
+*.sqlite3
 
 # Windows DLLs (jaga-jaga kalau tercecer di root)
 *.dll

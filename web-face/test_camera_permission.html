@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Test Camera Permission</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f5f5f5;
+      }
+      .container {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+      .button {
+        background-color: #14b8a6;
+        color: white;
+        padding: 12px 24px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 16px;
+        margin: 10px 5px;
+      }
+      .button:hover {
+        background-color: #0d9488;
+      }
+      .status {
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 5px;
+        font-weight: bold;
+      }
+      .success {
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+      }
+      .error {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+      }
+      .info {
+        background-color: #d1ecf1;
+        color: #0c5460;
+        border: 1px solid #bee5eb;
+      }
+      video {
+        width: 100%;
+        max-width: 400px;
+        border-radius: 8px;
+        margin: 10px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🔍 Test Camera Permission</h1>
+      <p>Test ini untuk memverifikasi apakah browser meminta izin kamera dengan benar.</p>
+
+      <div class="status info" id="instructions">📋 <strong>Instruksi:</strong> Klik tombol "Test Camera Permission" untuk menguji permintaan izin kamera.</div>
+
+      <div class="status success" id="success-status" style="display: none">✅ Camera permission berhasil! Kamera telah diaktifkan.</div>
+
+      <div class="status error" id="error-status" style="display: none">❌ Error: <span id="error-message"></span></div>
+
+      <video id="video" autoplay playsinline style="display: none"></video>
+
+      <button class="button" onclick="testCameraPermission()">📷 Test Camera Permission</button>
+
+      <button class="button" onclick="stopCamera()" id="stop-btn" style="display: none">⏹️ Stop Camera</button>
+
+      <div class="status info">
+        <strong>Tips:</strong>
+        <ul>
+          <li>Pastikan browser Anda mendukung <code>getUserMedia()</code></li>
+          <li>Anda akan melihat prompt permission dari browser</li>
+          <li>Klik "Allow" untuk memberikan akses kamera</li>
+          <li>Jika error, coba refresh halaman dan coba lagi</li>
+        </ul>
+      </div>
+    </div>
+
+    <script>
+      let stream = null;
+
+      async function testCameraPermission() {
+        const video = document.getElementById('video');
+        const successStatus = document.getElementById('success-status');
+        const errorStatus = document.getElementById('error-status');
+        const errorMessage = document.getElementById('error-message');
+        const stopBtn = document.getElementById('stop-btn');
+
+        // Hide previous status
+        successStatus.style.display = 'none';
+        errorStatus.style.display = 'none';
+
+        try {
+          console.log('Meminta akses kamera...');
+
+          // Request camera permission
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: false,
+          });
+
+          // Show success
+          successStatus.style.display = 'block';
+          video.srcObject = stream;
+          video.style.display = 'block';
+          stopBtn.style.display = 'inline-block';
+
+          console.log('✅ Camera permission granted successfully');
+        } catch (error) {
+          console.error('❌ Camera permission failed:', error);
+
+          // Show error
+          errorMessage.textContent = error.message || error.name;
+          errorStatus.style.display = 'block';
+        }
+      }
+
+      function stopCamera() {
+        const video = document.getElementById('video');
+        const successStatus = document.getElementById('success-status');
+        const stopBtn = document.getElementById('stop-btn');
+
+        if (stream) {
+          stream.getTracks().forEach((track) => track.stop());
+          stream = null;
+        }
+
+        video.srcObject = null;
+        video.style.display = 'none';
+        successStatus.style.display = 'none';
+        stopBtn.style.display = 'none';
+
+        console.log('Camera stopped');
+      }
+
+      // Check if getUserMedia is supported
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        document.getElementById('instructions').innerHTML = '❌ Browser Anda tidak mendukung <code>getUserMedia()</code>. ' + 'Silakan gunakan browser modern seperti Chrome, Firefox, atau Safari.';
+      }
+    </script>
+  </body>
+</html>
