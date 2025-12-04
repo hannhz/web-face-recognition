@@ -244,7 +244,7 @@
           statusVerif.textContent = 'Menunggu wajah...';
           resetCountdownUI();
         }
-      } catch (err) { }
+      } catch (err) {}
     }, CHECK_INTERVAL);
   }
 
@@ -507,12 +507,7 @@
             <p><strong>Alamat:</strong> ${d.address}</p>
             <p><strong>Waktu Verifikasi:</strong> ${elapsed} detik</p>
 
-            <div class="mt-3 pt-2 border-t dark:border-gray-700 flex justify-between items-center">
-                <span class="text-xs font-medium ${d.confidence > 70 ? 'text-green-600 dark:text-green-400' : 'text-yellow-600'}">
-                   Kecocokan: ${d.confidence}%
-                </span>
-            </div>
-            
+
             <div class="bg-blue-50 dark:bg-[#1e293b] text-blue-800 dark:text-blue-300 text-sm px-4 py-2 rounded-lg mt-2 flex items-center gap-2 animate-pulse border dark:border-border">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                 <span id="next-scan-text-dynamic" class="font-medium">Verifikasi selanjutnya dalam 10 detik...</span>

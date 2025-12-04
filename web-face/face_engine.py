@@ -77,30 +77,35 @@ _embeddings_db = {}  # {nik: [embeddings]}
 _embeddings_loaded = False
 
 
-#def _get_face_app():
-#    """Lazy load InsightFace app to avoid startup delay"""
-#    global _face_app
-#    if _face_app is None:
-#        try:
-#            from insightface.app import FaceAnalysis
-#            logger.info("Initializing InsightFace app...")
-#            _face_app = FaceAnalysis(
-#                name='buffalo_l',  # Uses RetinaFace + ArcFace
-#                root=MODEL_DIR,
-#                providers=['CPUExecutionProvider']  # Use CPU for compatibility
-#            )
-#            # ctx_id=-1 -> CPU; det_size wider for better detection
-#            _face_app.prepare(ctx_id=-1, det_size=(640, 640))
-#            # Sanity check: ensure recognition head exists
-#            test_attr = hasattr(_face_app, 'models') or True  # avoid strict version coupling
-#            logger.info("InsightFace app initialized successfully")
-#        except ImportError as e:
-#           logger.warning(f"InsightFace not available in this Python environment: {e}")
-#            _face_app = None
-#       except Exception as e:
-#            logger.error(f"Failed to initialize InsightFace: {e}")
-#            _face_app = None
-#   return _face_app
+def _get_face_app():
+    """Lazy load InsightFace app to avoid startup delay"""
+    global _face_app
+    if _face_app is None:
+        try:
+            from insightface.app import FaceAnalysis
+            logger.info("Initializing InsightFace app...")
+            
+            # --- MODIFIKASI: Gunakan GPU (CUDA) ---
+            # Prioritaskan CUDAExecutionProvider agar GPU dipakai
+            _face_app = FaceAnalysis(
+                name='buffalo_l',
+                root=MODEL_DIR,
+                providers=['CUDAExecutionProvider', 'CPUExecutionProvider'] 
+            )
+            
+            # ctx_id = 0 artinya gunakan GPU pertama. (-1 untuk CPU)
+            _face_app.prepare(ctx_id=0, det_size=(640, 640))
+            
+            # Sanity check: ensure recognition head exists
+            test_attr = hasattr(_face_app, 'models') or True
+            logger.info("InsightFace app initialized successfully with GPU")
+        except ImportError as e:
+            logger.warning(f"InsightFace not available in this Python environment: {e}")
+            _face_app = None
+        except Exception as e:
+            logger.error(f"Failed to initialize InsightFace: {e}")
+            _face_app = None
+    return _face_app
 
 def _get_face_app():
     """Lazy load InsightFace app to avoid startup delay"""
@@ -825,21 +830,74 @@ def suggest_threshold() -> float:
 _initialized = False
 _init_lock = threading.Lock()
 
+# ====== INITIALIZATION (AGGRESSIVE WARM UP) ======
+
+_initialized = False
+_init_lock = threading.Lock()
+
+# GANTI BAGIAN PALING BAWAH (Fungsi initialize) DENGAN INI:
+
 def initialize():
-    """Initialize face engine at startup (thread-safe)"""
+    """
+    Initialize face engine at startup with REAL IMAGE WARM UP.
+    Menggunakan foto asli 'warmup.jpg' untuk memancing seluruh pipeline (Deteksi + Recog)
+    agar bangun sempurna.
+    """
     global _initialized
     with _init_lock:
         if _initialized:
             return  # Already initialized
 
+        # 1. Load Database
         init_embedding_db()
         load_all_embeddings()
 
-        # Pre-warm face detection (optional)
-        # _get_face_app()
+        logger.info("🔥 WARM UP: Memanaskan Mesin AI...")
+        
+        # 2. Load Model Utama
+        app = _get_face_app()
+
+        if app:
+            try:
+                # Cari file warmup.jpg di folder yang sama dengan script ini
+                warmup_path = os.path.join(BASE_DIR, "warmup.jpg")
+                
+                # Cek apakah user sudah menaruh fotonya?
+                if os.path.exists(warmup_path):
+                    logger.info(f"   ├─ Ditemukan foto pancingan: {warmup_path}")
+                    
+                    # Baca gambar
+                    img = cv2.imread(warmup_path)
+                    
+                    if img is not None:
+                        logger.info("   ├─ Memaksa GPU memproses foto asli 3x...")
+                        
+                        # KITA PAKSA DIA KERJA 3 KALI!
+                        # 1x buat bangunin Deteksi
+                        # 1x buat bangunin Recognition (karena wajah terdeteksi)
+                        # 1x buat memantapkan cache memori
+                        for i in range(3):
+                            start = datetime.now()
+                            app.get(img) # <--- Ini trigger FULL PIPELINE (Deteksi -> Recog)
+                            logger.info(f"   │  └─ Pass {i+1} selesai: {(datetime.now() - start).total_seconds():.2f}s")
+                            
+                        logger.info("✅ WARM UP SUKSES! GPU sudah panas & siap tempur.")
+                    else:
+                        logger.warning("⚠️ File warmup.jpg ada tapi rusak/tidak terbaca.")
+                else:
+                    # FALLBACK: Kalau kamu lupa naruh foto, kita pakai cara dummy lama
+                    logger.warning("⚠️ File 'warmup.jpg' TIDAK DITEMUKAN! Menggunakan dummy noise...")
+                    logger.warning("   (Tips: Taruh foto wajah bernama 'warmup.jpg' di folder project agar scan pertama instan)")
+                    
+                    # Dummy fallback
+                    dummy = np.zeros((640, 640, 3), dtype=np.uint8)
+                    app.get(dummy) 
+
+            except Exception as e:
+                logger.warning(f"⚠️ Warmup Warning: {e}")
 
         _initialized = True
-        logger.info("Face engine initialized")
+        logger.info("Face engine initialized completely.")
 
 
 def is_available() -> bool:

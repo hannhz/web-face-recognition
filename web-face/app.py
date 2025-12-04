@@ -603,13 +603,13 @@ def admin_dashboard():
                         is_gpu_active = True
             
             if is_gpu_active:
-                hardware_status = "GPU (NVIDIA RTX)"
+                hardware_status = "GPU (NVIDIA RTX 3050)"
                 hardware_color = "green"
         except:
             hardware_status = "Error Check"
             hardware_color = "red"
     elif FACE_ENGINE == "lbph":
-        hardware_status = "CPU (OpenCV)"
+        hardware_status = "CPU (11th Gen Intel Core i7-11600H)"
         hardware_color = "gray"
     
     return render_template("admin_dashboard.html", patients=rows, model_loaded=engine_info['model_loaded'],
@@ -970,7 +970,7 @@ def api_recognize():
     # --- 2. LBPH FALLBACK ---
     if not model_loaded: 
         log_scan_result(status="failed", message="Model belum di-load/training.")
-        return jsonify(ok=False, msg="Model belum siap."), 400
+        return jsonify(ok=False, msg="Wajah Tidak Dikenali."), 400
         
     if not recognizer: 
         return jsonify(ok=False, msg="LBPH error."), 500
